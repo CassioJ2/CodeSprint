@@ -7,15 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-dist-electron
-*.local
+# Dependências
+node_modules/
+
+# Builds
+dist/
+dist-ssr/
+dist-electron/
+out/
+
+# Env
 .env
 .env.*
 
-# Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -25,3 +30,4 @@ dist-electron
 *.njsproj
 *.sln
 *.sw?
+*.local
