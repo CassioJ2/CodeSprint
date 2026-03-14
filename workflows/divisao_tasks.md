@@ -59,6 +59,7 @@
   - [x] `session:clear` -> limpa sessao local e para o polling
   - [x] Smoke tests da camada IPC
   - [x] Recarregar `tasks.md` remoto automaticamente em conflito de salvamento
+  - [x] Expor contrato IPC para o frontend consultar canais, payloads e eventos
 
 ### Fase 5 - Empacotamento
 

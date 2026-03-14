@@ -11,6 +11,15 @@ function loadFactoryModule() {
     return factory()
 }
 
+function loadSpecModule() {
+    const filePath = join(__dirname, 'spec.js')
+    const source = readFileSync(filePath, 'utf-8')
+        .replace('export const IPC_CONTRACT =', 'const IPC_CONTRACT =')
+
+    const factory = new Function(`${source}\nreturn { IPC_CONTRACT }`)
+    return factory()
+}
+
 function createMemoryStore(initialState = {}) {
     const state = {
         token: null,
@@ -58,6 +67,7 @@ async function run(name, fn) {
 }
 
 const { createIpcHandlers } = loadFactoryModule()
+const { IPC_CONTRACT } = loadSpecModule()
 
 async function main() {
     await run('registra handlers esperados e responde session:get', async () => {
@@ -85,6 +95,19 @@ async function main() {
 
         assert.deepEqual(
             Object.keys(handlers).sort(),
+            [
+                'github:login',
+                'github:repos',
+                'session:clear',
+                'session:get',
+                'tasks:init',
+                'tasks:load',
+                'tasks:save'
+            ].sort()
+        )
+
+        assert.deepEqual(
+            Object.keys(IPC_CONTRACT.invoke).sort(),
             [
                 'github:login',
                 'github:repos',
