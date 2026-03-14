@@ -16,11 +16,16 @@ import styles from "./KanbanPage.module.css";
 const COLUMNS = [
   { key: "pending", label: "Pendente", color: "#4F4F4F" },
   { key: "in_progress", label: "Em andamento", color: "#00A676" },
-  { key: "done", label: "ConcluÃ­do", color: "#94D2BD" },
+  { key: "done", label: "Concluído", color: "#94D2BD" },
 ];
 
-export default function KanbanPage({ onLogout }) {
-  const [tasks, setTasks] = useState([]);
+export default function KanbanPage({
+  initialTasks,
+  activeRepo,
+  onTasksChange,
+  onLogout,
+}) {
+  const [tasks, setTasks] = useState(initialTasks || []);
   const [step, setStep] = useState("loading");
   const [error, setError] = useState("");
   const [activeTask, setActiveTask] = useState(null);
@@ -30,13 +35,24 @@ export default function KanbanPage({ onLogout }) {
   );
 
   useEffect(() => {
+    setTasks(initialTasks || []);
+    setStep("ready");
+  }, [initialTasks]);
+
+  useEffect(() => {
+    onTasksChange?.(tasks);
+  }, [tasks, onTasksChange]);
+
+  useEffect(() => {
     const cleanup = window.electron.on(
       "tasks:external-update",
       (updatedTasks) => {
         setTasks(updatedTasks);
+        setStep("ready");
+        setError("");
       },
     );
-    setStep("ready");
+
     return () => cleanup?.();
   }, []);
 
@@ -83,6 +99,7 @@ export default function KanbanPage({ onLogout }) {
   const saveTasks = async (updatedTasks) => {
     try {
       setStep("saving");
+      setError("");
       await window.electron.invoke("tasks:save", {
         tasks: updatedTasks,
         commitMessage: "chore: update tasks",
@@ -100,6 +117,19 @@ export default function KanbanPage({ onLogout }) {
     );
     setTasks(updated);
     await saveTasks(updated);
+  };
+
+  const handleInitializeTasks = async () => {
+    try {
+      setStep("saving");
+      setError("");
+      const result = await window.electron.invoke("tasks:init", {});
+      setTasks(result.tasks);
+      setStep("ready");
+    } catch (err) {
+      setError(err.message);
+      setStep("error");
+    }
   };
 
   const handleLogout = async () => {
@@ -128,6 +158,11 @@ export default function KanbanPage({ onLogout }) {
             />
           </svg>
           <h1 className={styles.appName}>CodeSprint</h1>
+          {activeRepo && (
+            <span className={styles.repoBadge}>
+              {activeRepo.owner}/{activeRepo.repo}
+            </span>
+          )}
         </div>
 
         <div className={styles.headerRight}>
@@ -153,6 +188,22 @@ export default function KanbanPage({ onLogout }) {
         <div className={styles.loadingWrap}>
           <LoadingSpinner />
           <p>Carregando tasks...</p>
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className={styles.emptyState}>
+          <h2 className={styles.emptyTitle}>Nenhum backlog encontrado</h2>
+          <p className={styles.emptyText}>
+            Esse repositório ainda não tem um <code>tasks.md</code>. Você pode
+            criar um backlog inicial agora e começar a testar o fluxo completo.
+          </p>
+          <button
+            className={styles.btnPrimary}
+            onClick={handleInitializeTasks}
+            disabled={step === "saving"}
+          >
+            {step === "saving" ? "Criando backlog..." : "Criar tasks.md inicial"}
+          </button>
+          {step === "error" && <p className={styles.emptyError}>{error}</p>}
         </div>
       ) : (
         <DndContext

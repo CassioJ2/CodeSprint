@@ -268,6 +268,59 @@ async function main() {
         assert.equal(sent[0].channel, 'tasks:external-update')
         assert.equal(sent[0].args[0][0].title, 'Task remota')
     })
+
+    await run('tasks:save serializa salvamentos consecutivos e reutiliza o SHA atualizado', async () => {
+        const { mainWindow } = createMainWindowRecorder()
+        const store = createMemoryStore({
+            token: 'token-123',
+            activeRepo: { owner: 'cassio', repo: 'ai-project' },
+            tasksSha: 'sha-inicial'
+        })
+        const seenShas = []
+
+        const handlers = createIpcHandlers({
+            env: { GITHUB_CLIENT_ID: 'client-id' },
+            mainWindow,
+            store,
+            startDeviceFlow: async () => ({}),
+            pollForToken: async () => 'token',
+            getRepos: async () => [],
+            getFile: async () => ({ sha: 'sha-remoto', content: '# Tasks\n' }),
+            updateFile: async (_token, _owner, _repo, _path, _content, sha) => {
+                seenShas.push(sha)
+                await new Promise((resolve) => setTimeout(resolve, 5))
+
+                if (sha === 'sha-inicial') {
+                    return { sha: 'sha-1' }
+                }
+
+                if (sha === 'sha-1') {
+                    return { sha: 'sha-2' }
+                }
+
+                throw new Error(`unexpected sha ${sha}`)
+            },
+            parse: () => [],
+            stringify: (tasks) => JSON.stringify(tasks),
+            startPoller: () => {},
+            stopPoller: () => {},
+            createInitialTasksMarkdown: () => '# Tasks\n'
+        })
+
+        const firstSave = handlers['tasks:save'](null, {
+            tasks: [{ id: 'TASK-001', title: 'Primeira', status: 'pending', subtasks: [] }]
+        })
+        const secondSave = handlers['tasks:save'](null, {
+            tasks: [{ id: 'TASK-001', title: 'Segunda', status: 'done', subtasks: [] }]
+        })
+
+        const results = await Promise.all([firstSave, secondSave])
+
+        assert.deepEqual(seenShas, ['sha-inicial', 'sha-1'])
+        assert.equal(results[0].sha, 'sha-1')
+        assert.equal(results[1].sha, 'sha-2')
+        assert.equal(store.get('tasksSha'), 'sha-2')
+    })
 }
 
 main().catch((error) => {

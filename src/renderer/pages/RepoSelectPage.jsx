@@ -11,17 +11,21 @@ export default function RepoSelectPage({ onRepoSelected }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    window.electron
-      .invoke("github:repos")
-      .then((data) => {
+    const loadRepos = async () => {
+      try {
+        setStep("loading");
+        setError("");
+        const data = await window.electron.invoke("github:repos");
         setRepos(data);
         setFiltered(data);
         setStep("ready");
-      })
-      .catch((err) => {
+      } catch (err) {
         setError(err.message);
         setStep("error");
-      });
+      }
+    };
+
+    loadRepos();
   }, []);
 
   useEffect(() => {
@@ -33,11 +37,14 @@ export default function RepoSelectPage({ onRepoSelected }) {
     if (!selected) return;
     try {
       setStep("confirming");
-      await window.electron.invoke("tasks:load", {
-        owner: selected.owner.login,
+      const tasks = await window.electron.invoke("tasks:load", {
+        owner: selected.owner,
         repo: selected.name,
       });
-      onRepoSelected();
+      onRepoSelected({
+        repo: { owner: selected.owner, repo: selected.name },
+        tasks,
+      });
     } catch (err) {
       setError(err.message);
       setStep("error");
@@ -47,15 +54,15 @@ export default function RepoSelectPage({ onRepoSelected }) {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h1 className={styles.title}>Selecionar reposit√≥rio</h1>
+        <h1 className={styles.title}>Selecionar repositÛrio</h1>
         <p className={styles.subtitle}>
-          Escolha o repo onde o tasks.md ser√° sincronizado
+          Escolha o repo onde o tasks.md ser· sincronizado
         </p>
 
         {step === "loading" && (
           <div className={styles.loadingWrap}>
             <LoadingSpinner />
-            <p className={styles.loadingText}>Carregando reposit√≥rios...</p>
+            <p className={styles.loadingText}>Carregando repositÛrios...</p>
           </div>
         )}
 
@@ -64,7 +71,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
             <input
               className={styles.search}
               type="text"
-              placeholder="Buscar reposit√≥rio..."
+              placeholder="Buscar repositÛrio..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -78,13 +85,13 @@ export default function RepoSelectPage({ onRepoSelected }) {
                 >
                   <span className={styles.repoName}>{repo.name}</span>
                   <span className={styles.repoDesc}>
-                    {repo.description || "Sem descri√ß√£o"}
+                    {repo.fullName}
                   </span>
                 </button>
               ))}
 
               {filtered.length === 0 && (
-                <p className={styles.empty}>Nenhum reposit√≥rio encontrado</p>
+                <p className={styles.empty}>Nenhum repositÛrio encontrado</p>
               )}
             </div>
 
@@ -96,7 +103,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
               {step === "confirming" ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                "Confirmar sele√ß√£o"
+                "Confirmar seleÁ„o"
               )}
             </button>
           </>
@@ -107,7 +114,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
             <p className={styles.errorText}>{error}</p>
             <button
               className={styles.btnPrimary}
-              onClick={() => setStep("loading")}
+              onClick={() => window.location.reload()}
             >
               Tentar novamente
             </button>
