@@ -6,6 +6,7 @@ const store = new Store({
         token: null,
         activeRepo: null,
         tasksSha: null,
+        remoteFileShas: {},
         dirtyRepos: {}
     }
 })

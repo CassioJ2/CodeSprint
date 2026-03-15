@@ -15,6 +15,10 @@ function repoKey({ owner, repo }) {
     return `${owner}/${repo}`
 }
 
+function getTasksBranch(activeRepo) {
+    return activeRepo?.tasksBranch || 'tasks'
+}
+
 export function syncLocalWatcherSnapshot(markdown) {
     lastObservedLocalMarkdown = markdown ?? null
 }
@@ -96,7 +100,9 @@ export function startPoller(mainWindow) {
             }
 
             const { owner, repo } = activeRepo
-            const currentSha = await getFileSha(token, owner, repo, 'tasks.md')
+            const currentSha = await getFileSha(token, owner, repo, 'tasks.md', {
+                ref: getTasksBranch(activeRepo)
+            })
             const cachedSha = store.get('tasksSha')
             const dirtyRepos = store.get('dirtyRepos') || {}
             const hasLocalChanges = !!dirtyRepos[repoKey(activeRepo)]
@@ -114,7 +120,9 @@ export function startPoller(mainWindow) {
 
             console.log('[poller] External change detected, fetching new tasks...')
 
-            const file = await getFile(token, owner, repo, 'tasks.md')
+            const file = await getFile(token, owner, repo, 'tasks.md', {
+                ref: getTasksBranch(activeRepo)
+            })
             if (!file) {
                 store.set('tasksSha', null)
                 mainWindow.webContents.send('tasks:external-update', [])

@@ -9,6 +9,19 @@ import { fetchWithTimeout } from './http'
 const API = 'https://api.github.com'
 const userProfileCache = new Map()
 
+function withQuery(url, params = {}) {
+    const searchParams = new URLSearchParams()
+
+    for (const [key, value] of Object.entries(params)) {
+        if (value) {
+            searchParams.set(key, value)
+        }
+    }
+
+    const query = searchParams.toString()
+    return query ? `${url}?${query}` : url
+}
+
 function headers(token) {
     return {
         Authorization: `Bearer ${token}`,
@@ -124,6 +137,75 @@ export async function getRepoCollaborators(token, owner, repo) {
     return enrichedCollaborators
 }
 
+export async function getRepoDetails(token, owner, repo) {
+    const res = await fetchWithTimeout(`${API}/repos/${owner}/${repo}`, {
+        headers: headers(token)
+    })
+
+    if (!res.ok) {
+        const error = await readGitHubError(res, `getRepoDetails failed: ${res.status}`)
+        throw new GitHubApiError(error.message, { status: res.status, code: error.code })
+    }
+
+    return res.json()
+}
+
+async function getBranchRef(token, owner, repo, branch) {
+    const res = await fetchWithTimeout(`${API}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(branch)}`, {
+        headers: headers(token)
+    })
+
+    if (res.status === 404) {
+        return null
+    }
+
+    if (!res.ok) {
+        const error = await readGitHubError(res, `getBranchRef failed: ${res.status}`)
+        throw new GitHubApiError(error.message, { status: res.status, code: error.code })
+    }
+
+    return res.json()
+}
+
+export async function ensureBranch(token, owner, repo, branch) {
+    if (!branch) {
+        return null
+    }
+
+    const existingBranch = await getBranchRef(token, owner, repo, branch)
+    if (existingBranch) {
+        return { created: false, branch }
+    }
+
+    const repoDetails = await getRepoDetails(token, owner, repo)
+    const defaultBranch = repoDetails.default_branch
+    const defaultBranchRef = await getBranchRef(token, owner, repo, defaultBranch)
+
+    if (!defaultBranchRef?.object?.sha) {
+        throw new Error(`Could not resolve default branch ${defaultBranch} for ${owner}/${repo}`)
+    }
+
+    const res = await fetchWithTimeout(`${API}/repos/${owner}/${repo}/git/refs`, {
+        method: 'POST',
+        headers: headers(token),
+        body: JSON.stringify({
+            ref: `refs/heads/${branch}`,
+            sha: defaultBranchRef.object.sha
+        })
+    })
+
+    if (res.status === 422) {
+        return { created: false, branch }
+    }
+
+    if (!res.ok) {
+        const error = await readGitHubError(res, `ensureBranch failed: ${res.status}`)
+        throw new GitHubApiError(error.message, { status: res.status, code: error.code })
+    }
+
+    return { created: true, branch, baseBranch: defaultBranch }
+}
+
 /**
  * Retorna o conteudo de um arquivo no repositorio.
  * @param {string} token
@@ -132,8 +214,9 @@ export async function getRepoCollaborators(token, owner, repo) {
  * @param {string} path
  * @returns {Promise<{ content: string, sha: string } | null>}
  */
-export async function getFile(token, owner, repo, path) {
-    const res = await fetchWithTimeout(`${API}/repos/${owner}/${repo}/contents/${path}`, {
+export async function getFile(token, owner, repo, path, options = {}) {
+    const { ref = null } = options
+    const res = await fetchWithTimeout(withQuery(`${API}/repos/${owner}/${repo}/contents/${path}`, { ref }), {
         headers: headers(token)
     })
 
@@ -162,7 +245,8 @@ export async function getFile(token, owner, repo, path) {
  * @param {string} message
  * @returns {Promise<{ sha: string }>}
  */
-export async function updateFile(token, owner, repo, path, content, sha, message) {
+export async function updateFile(token, owner, repo, path, content, sha, message, options = {}) {
+    const { branch = null } = options
     const body = {
         message,
         content: Buffer.from(content, 'utf-8').toString('base64')
@@ -170,6 +254,10 @@ export async function updateFile(token, owner, repo, path, content, sha, message
 
     if (sha) {
         body.sha = sha
+    }
+
+    if (branch) {
+        body.branch = branch
     }
 
     const res = await fetchWithTimeout(`${API}/repos/${owner}/${repo}/contents/${path}`, {
@@ -195,7 +283,7 @@ export async function updateFile(token, owner, repo, path, content, sha, message
  * @param {string} path
  * @returns {Promise<string|null>}
  */
-export async function getFileSha(token, owner, repo, path) {
-    const file = await getFile(token, owner, repo, path)
+export async function getFileSha(token, owner, repo, path, options = {}) {
+    const file = await getFile(token, owner, repo, path, options)
     return file ? file.sha : null
 }

@@ -5,7 +5,7 @@ const { join } = require('node:path')
 function loadFactoryModule() {
     const filePath = join(__dirname, 'contracts.js')
     const source = readFileSync(filePath, 'utf-8')
-        .replace("import { syncLocalWatcherSnapshot } from '../watcher/poller'\n\n", '')
+        .replace(/import\s+\{\s*syncLocalWatcherSnapshot\s*\}\s+from\s+'\.\.\/watcher\/poller'\s*\r?\n\r?\n/, '')
         .replace('export function createIpcHandlers', 'function createIpcHandlers')
 
     const factory = new Function('syncLocalWatcherSnapshot', `${source}\nreturn { createIpcHandlers }`)
@@ -111,6 +111,7 @@ async function main() {
                 'tasks:cache',
                 'tasks:init',
                 'tasks:load',
+                'tasks:pull',
                 'tasks:save'
             ].sort()
         )
@@ -129,13 +130,14 @@ async function main() {
                 'tasks:cache',
                 'tasks:init',
                 'tasks:load',
+                'tasks:pull',
                 'tasks:save'
             ].sort()
         )
 
         const session = handlers['session:get']()
         assert.equal(session.isAuthenticated, true)
-        assert.deepEqual(session.activeRepo, { owner: 'cassio', repo: 'ai-project' })
+        assert.deepEqual(session.activeRepo, { owner: 'cassio', repo: 'ai-project', tasksBranch: 'tasks' })
     })
 
     await run('repo:pick-local-path retorna a pasta selecionada', async () => {
@@ -314,13 +316,17 @@ async function main() {
         assert.deepEqual(store.get('activeRepo'), {
             owner: 'cassio',
             repo: 'ai-project',
-            localPath: 'D:\\Projeto\\AI-Project'
+            localPath: 'D:\\Projeto\\AI-Project',
+            tasksBranch: 'tasks'
         })
     })
 
     await run('tasks:load prefere o tasks.md do repositorio local real e preserva SHA remoto quando disponivel', async () => {
         const { mainWindow } = createMainWindowRecorder()
         const store = createMemoryStore({ token: 'token-123' })
+        const ensuredBranches = []
+        const ensuredContexts = []
+        const refs = []
 
         const handlers = createIpcHandlers({
             env: { GITHUB_CLIENT_ID: 'client-id' },
@@ -330,12 +336,23 @@ async function main() {
             pollForToken: async () => 'token',
             getRepos: async () => [],
             getRepoCollaborators: async () => [],
-            getFile: async () => ({ sha: 'sha-remoto', content: '# Tasks\n\n- [ ] Remoto\n' }),
+            getFile: async (_token, _owner, _repo, _path, options = {}) => {
+                refs.push(options.ref)
+                return { sha: 'sha-remoto', content: '# Tasks\n\n- [ ] Remoto\n' }
+            },
             updateFile: async () => ({ sha: 'sha-1' }),
+            ensureBranch: async (_token, owner, repo, branch) => {
+                ensuredBranches.push(`${owner}/${repo}:${branch}`)
+                return { created: false, branch }
+            },
             parse: (markdown) => [{ id: 'TASK-001', title: markdown.includes('Repo local') ? 'Repo local' : markdown.includes('Local') ? 'Local' : 'Remoto', status: 'pending', subtasks: [] }],
             stringify: () => '# Tasks\n',
             readRepoTasksMarkdown: async () => '# Tasks\n\n- [ ] Repo local\n',
             readLocalTasksMarkdown: async () => '# Tasks\n\n- [ ] Local\n',
+            ensureRepoAiContextFiles: async (localPath, repoInfo) => {
+                ensuredContexts.push({ localPath, repoInfo })
+                return { created: ['AGENTS.md', 'TASKS_WORKFLOW.md'] }
+            },
             startPoller: () => {},
             stopPoller: () => {},
             createInitialTasksMarkdown: () => '# Tasks\n'
@@ -349,10 +366,14 @@ async function main() {
 
         assert.equal(result[0].title, 'Repo local')
         assert.equal(store.get('tasksSha'), 'sha-remoto')
+        assert.deepEqual(ensuredBranches, ['cassio/ai-project:tasks'])
+        assert.equal(refs[0], 'tasks')
+        assert.equal(ensuredContexts[0].localPath, 'D:\\Projeto\\AI-Project')
         assert.deepEqual(store.get('activeRepo'), {
             owner: 'cassio',
             repo: 'ai-project',
-            localPath: 'D:\\Projeto\\AI-Project'
+            localPath: 'D:\\Projeto\\AI-Project',
+            tasksBranch: 'tasks'
         })
     })
 
@@ -437,6 +458,79 @@ async function main() {
         assert.equal(writes[0][2], '[{"id":"TASK-001"}]')
         assert.equal(repoWrites[0][0], 'D:\\Projeto\\AI-Project')
         assert.equal(repoWrites[0][1], '[{"id":"TASK-001"}]')
+    })
+
+    await run('tasks:pull aplica remoto automaticamente quando nao ha mudancas locais', async () => {
+        const { mainWindow } = createMainWindowRecorder()
+        const store = createMemoryStore({
+            token: 'token-123',
+            activeRepo: { owner: 'cassio', repo: 'ai-project', localPath: 'D:\\Projeto\\AI-Project', tasksBranch: 'tasks' }
+        })
+        const writes = []
+        const repoWrites = []
+
+        const handlers = createIpcHandlers({
+            env: { GITHUB_CLIENT_ID: 'client-id' },
+            mainWindow,
+            store,
+            startDeviceFlow: async () => ({}),
+            pollForToken: async () => 'token',
+            getRepos: async () => [],
+            getRepoCollaborators: async () => [],
+            getFile: async () => ({ sha: 'sha-remoto', content: '# Tasks\n\n- [ ] Remota\n' }),
+            updateFile: async () => ({ sha: 'sha-1' }),
+            ensureBranch: async () => ({ created: false, branch: 'tasks' }),
+            parse: () => [{ id: 'TASK-001', title: 'Remota', status: 'pending', subtasks: [] }],
+            stringify: () => '# Tasks\n',
+            writeLocalTasksMarkdown: async (...args) => {
+                writes.push(args)
+            },
+            writeRepoTasksMarkdown: async (...args) => {
+                repoWrites.push(args)
+            },
+            startPoller: () => {},
+            stopPoller: () => {},
+            createInitialTasksMarkdown: () => '# Tasks\n'
+        })
+
+        const result = await handlers['tasks:pull']()
+
+        assert.equal(result.mode, 'applied')
+        assert.equal(result.sha, 'sha-remoto')
+        assert.equal(writes[0][2], '# Tasks\n\n- [ ] Remota\n')
+        assert.equal(repoWrites[0][1], '# Tasks\n\n- [ ] Remota\n')
+    })
+
+    await run('tasks:pull retorna conflito quando ha mudancas locais pendentes', async () => {
+        const { mainWindow } = createMainWindowRecorder()
+        const store = createMemoryStore({
+            token: 'token-123',
+            activeRepo: { owner: 'cassio', repo: 'ai-project', localPath: 'D:\\Projeto\\AI-Project', tasksBranch: 'tasks' },
+            dirtyRepos: { 'cassio/ai-project': true }
+        })
+
+        const handlers = createIpcHandlers({
+            env: { GITHUB_CLIENT_ID: 'client-id' },
+            mainWindow,
+            store,
+            startDeviceFlow: async () => ({}),
+            pollForToken: async () => 'token',
+            getRepos: async () => [],
+            getRepoCollaborators: async () => [],
+            getFile: async () => ({ sha: 'sha-remoto', content: '# Tasks\n\n- [ ] Remota\n' }),
+            updateFile: async () => ({ sha: 'sha-1' }),
+            ensureBranch: async () => ({ created: false, branch: 'tasks' }),
+            parse: () => [{ id: 'TASK-001', title: 'Remota', status: 'pending', subtasks: [] }],
+            stringify: () => '# Tasks\n',
+            startPoller: () => {},
+            stopPoller: () => {},
+            createInitialTasksMarkdown: () => '# Tasks\n'
+        })
+
+        const result = await handlers['tasks:pull']()
+
+        assert.equal(result.mode, 'conflict')
+        assert.equal(result.tasks[0].title, 'Remota')
     })
 
     await run('session:clear limpa sessao e para o poller', async () => {
