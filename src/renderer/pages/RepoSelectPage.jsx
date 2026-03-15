@@ -54,15 +54,15 @@ export default function RepoSelectPage({ onRepoSelected }) {
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        <h1 className={styles.title}>Selecionar reposit�rio</h1>
+        <h1 className={styles.title}>Selecionar repositório</h1>
         <p className={styles.subtitle}>
-          Escolha o repo onde o tasks.md ser� sincronizado
+          Escolha o repositório onde o tasks.md ser sincronizado
         </p>
 
         {step === "loading" && (
           <div className={styles.loadingWrap}>
             <LoadingSpinner />
-            <p className={styles.loadingText}>Carregando reposit�rios...</p>
+            <p className={styles.loadingText}>Carregando repositórios...</p>
           </div>
         )}
 
@@ -71,7 +71,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
             <input
               className={styles.search}
               type="text"
-              placeholder="Buscar reposit�rio..."
+              placeholder="Buscar repositório..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -89,7 +89,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
               ))}
 
               {filtered.length === 0 && (
-                <p className={styles.empty}>Nenhum reposit�rio encontrado</p>
+                <p className={styles.empty}>Nenhum repositório encontrado</p>
               )}
             </div>
 
@@ -101,7 +101,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
               {step === "confirming" ? (
                 <LoadingSpinner size="sm" />
               ) : (
-                "Confirmar sele��o"
+                "Confirmar seleção"
               )}
             </button>
           </>

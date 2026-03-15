@@ -18,7 +18,7 @@ import Toast from "../components/Toast";
 const COLUMNS = [
   { key: "pending", label: "Pendente", color: "#4F4F4F" },
   { key: "in_progress", label: "Em andamento", color: "#00A676" },
-  { key: "done", label: "Conclu�do", color: "#94D2BD" },
+  { key: "done", label: "Concluído", color: "#94D2BD" },
 ];
 
 export default function KanbanPage({
@@ -152,6 +152,12 @@ export default function KanbanPage({
     }
   };
 
+  const handleCreateTask = async (newTask) => {
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    await saveTasks(updated);
+  };
+
   const handleLogout = async () => {
     await window.electron.invoke("session:clear");
     onLogout();
@@ -222,8 +228,8 @@ export default function KanbanPage({
         <div className={styles.emptyState}>
           <h2 className={styles.emptyTitle}>Nenhum backlog encontrado</h2>
           <p className={styles.emptyText}>
-            Esse reposit�rio ainda n�o tem um <code>tasks.md</code>. Voc� pode
-            criar um backlog inicial agora e come�ar a testar o fluxo completo.
+            Esse repositório ainda não tem um <code>tasks.md</code>. Você pode
+            criar um backlog inicial agora e começar a testar o fluxo completo.
           </p>
           <button
             className={styles.btnPrimary}
