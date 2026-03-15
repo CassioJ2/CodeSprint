@@ -15,12 +15,8 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import styles from "./KanbanPage.module.css";
 import Toast from "../components/Toast";
 import logo from "../logo.svg";
-
-const COLUMNS = [
-  { key: "pending", label: "Pendente", color: "#4F4F4F" },
-  { key: "in_progress", label: "Em andamento", color: "#00A676" },
-  { key: "done", label: "Concluído", color: "#94D2BD" },
-];
+import { useColumns } from "../context/ColumnsContext";
+import ColumnsManager from "../components/ColumnsManager";
 
 export default function KanbanPage({ activeRepo, onLogout }) {
   const [tasks, setTasks] = useState([]);
@@ -32,6 +28,9 @@ export default function KanbanPage({ activeRepo, onLogout }) {
   const [toast, setToast] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const tasksRef = useRef(tasks);
+
+  const { columns } = useColumns();
+  const [showColumnsManager, setShowColumnsManager] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -94,9 +93,9 @@ export default function KanbanPage({ activeRepo, onLogout }) {
   };
 
   const findColumn = (taskId) =>
-    COLUMNS.find((col) =>
-      tasks.find((t) => t.id === taskId && t.status === col.key),
-    )?.key;
+    columns.find((col) =>
+      tasks.find((t) => t.id === taskId && t.status === col.id),
+    )?.id;
 
   const handleDragStart = ({ active }) => {
     setActiveTask(tasks.find((t) => t.id === active.id) || null);
@@ -106,7 +105,7 @@ export default function KanbanPage({ activeRepo, onLogout }) {
     if (!over) return;
     const activeCol = findColumn(active.id);
     const overCol =
-      COLUMNS.find((c) => c.key === over.id)?.key || findColumn(over.id);
+      columns.find((c) => c.id === over.id)?.id || findColumn(over.id);
     if (!activeCol || !overCol || activeCol === overCol) return;
     updateTasksLocally(
       tasks.map((t) => (t.id === active.id ? { ...t, status: overCol } : t)),
@@ -187,6 +186,12 @@ export default function KanbanPage({ activeRepo, onLogout }) {
           >
             + Nova task
           </button>
+          <button
+            className={styles.btnFlags}
+            onClick={() => setShowColumnsManager(true)}
+          >
+            ⚙ Colunas
+          </button>
         </div>
 
         <div className={styles.headerRight}>
@@ -246,13 +251,13 @@ export default function KanbanPage({ activeRepo, onLogout }) {
           onDragEnd={handleDragEnd}
         >
           <div className={styles.board}>
-            {COLUMNS.map((col) => (
+            {columns.map((col) => (
               <KanbanColumn
-                key={col.key}
-                columnId={col.key}
+                key={col.id}
+                columnId={col.id}
                 title={col.label}
                 color={col.color}
-                tasks={tasksByStatus(col.key)}
+                tasks={tasksByStatus(col.id)}
                 onStatusChange={handleStatusChange}
                 onDeleteTask={handleDeleteTask}
                 onEditTask={handleEditTask}
@@ -286,6 +291,9 @@ export default function KanbanPage({ activeRepo, onLogout }) {
           type={toast.type}
           onClose={() => setToast(null)}
         />
+      )}
+      {showColumnsManager && (
+        <ColumnsManager onClose={() => setShowColumnsManager(false)} />
       )}
     </div>
   );
