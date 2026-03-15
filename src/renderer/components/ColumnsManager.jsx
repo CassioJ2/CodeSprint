@@ -26,6 +26,7 @@ function ColumnEditor({ column, onSave, onCancel }) {
         placeholder="Nome da coluna"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
+        maxLength={30}
         autoFocus
       />
       <div className={styles.colorRow}>

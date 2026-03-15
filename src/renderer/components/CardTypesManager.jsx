@@ -32,6 +32,7 @@ function TypeEditor({ type, onSave, onCancel }) {
             placeholder="Ex: Review"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            maxLength={24}
             autoFocus
           />
         </div>

@@ -177,6 +177,7 @@ export default function RepoSelectPage({
               placeholder="Buscar repositorio..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              maxLength={120}
             />
 
             <div className={styles.list} ref={listRef} onScroll={handleScroll}>

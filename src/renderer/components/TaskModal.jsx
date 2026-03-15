@@ -256,6 +256,7 @@ export default function TaskModal({
                 placeholder="Buscar por nome ou @usuario..."
                 value={assigneeSearch}
                 onChange={(e) => setAssigneeSearch(e.target.value)}
+                maxLength={80}
                 disabled={isLoadingCollaborators}
               />
               <div className={styles.assigneeList}>
@@ -383,6 +384,7 @@ export default function TaskModal({
                       placeholder={`Subtask ${i + 1}`}
                       value={sub}
                       onChange={(e) => handleSubtaskChange(i, e.target.value)}
+                      maxLength={120}
                     />
                     <button
                       className={styles.btnRemove}

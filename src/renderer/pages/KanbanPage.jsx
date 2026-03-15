@@ -758,6 +758,7 @@ export default function KanbanPage({
               placeholder="Buscar por titulo ou descricao"
               value={backlogSearch}
               onChange={(e) => setBacklogSearch(e.target.value)}
+              maxLength={120}
             />
             <select
               className={styles.backlogSelect}
