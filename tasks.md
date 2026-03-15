@@ -4,7 +4,7 @@
   - [ ] Revisar README com screenshots
   - [ ] Validar nome, logo e branding final
   - [ ] Conferir se o repositorio esta limpo para avaliacao
-- [x] Refinar fluxo de sincronizacao da branch tasks <!--meta:{"description":"Garantir que o fluxo de tarefas fique previsivel, seguro e claro para o time.","priority":"high","labels":["sync","github","tasks-branch"],"cardType":"feature","assignee":"CassioJ2"}-->
+- [/] Refinar fluxo de sincronizacao da branch tasks <!--meta:{"description":"Garantir que o fluxo de tarefas fique previsivel, seguro e claro para o time.","priority":"high","labels":["sync","github","tasks-branch"],"cardType":"feature","assignee":"CassioJ2"}-->
   - [ ] Validar comportamento de pull remoto no app
   - [ ] Revisar comportamento de merge em conflito
   - [ ] Confirmar sync de AGENTS.md e TASKS_WORKFLOW.md
