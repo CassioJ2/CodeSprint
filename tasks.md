@@ -26,5 +26,3 @@
   - [ ] Mostrar branch tasks e sync
   - [ ] Encerrar com os diferenciais
 - [ ] teste <!--meta:{"status":"backlog","cardType":"spike"}-->
-- [ ] sadasdas <!--meta:{"description":"dasdasdas","status":"backlog","assignee":"CassioJ2"}-->
-- [ ] sdasdsa
