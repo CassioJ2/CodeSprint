@@ -1,5 +1,7 @@
 import { useState } from "react";
 import styles from "./TaskModal.module.css";
+import { useFlags } from "../context/FlagsContext";
+import FlagsManager from "./FlagsManager";
 
 const PRIORITY_OPTIONS = [
   { value: "low", label: "Baixa", color: "#4F4F4F" },
@@ -7,17 +9,9 @@ const PRIORITY_OPTIONS = [
   { value: "high", label: "Alta", color: "#E85D24" },
 ];
 
-const LABEL_OPTIONS = [
-  { value: "bug", label: "Bug", color: "#C0392B" },
-  { value: "feature", label: "Feature", color: "#005F73" },
-  { value: "urgente", label: "Urgente", color: "#E85D24" },
-  { value: "melhoria", label: "Melhoria", color: "#00A676" },
-  { value: "docs", label: "Docs", color: "#758956" },
-  { value: "teste", label: "Teste", color: "#2B2D42" },
-];
-
 export default function TaskModal({ task, onSave, onClose }) {
   const isEditing = !!task;
+  const { allFlags } = useFlags();
 
   const [title, setTitle] = useState(task?.title || "");
   const [description, setDescription] = useState(task?.description || "");
@@ -26,6 +20,7 @@ export default function TaskModal({ task, onSave, onClose }) {
   );
   const [priority, setPriority] = useState(task?.priority || "");
   const [labels, setLabels] = useState(task?.labels || []);
+  const [showFlagsManager, setShowFlagsManager] = useState(false);
 
   const handleAddSubtask = () => setSubtasks([...subtasks, ""]);
 
@@ -39,9 +34,9 @@ export default function TaskModal({ task, onSave, onClose }) {
     setSubtasks(subtasks.filter((_, i) => i !== index));
   };
 
-  const toggleLabel = (value) => {
+  const toggleLabel = (id) => {
     setLabels((prev) =>
-      prev.includes(value) ? prev.filter((l) => l !== value) : [...prev, value],
+      prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id],
     );
   };
 
@@ -69,111 +64,131 @@ export default function TaskModal({ task, onSave, onClose }) {
   };
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>
-            {isEditing ? "Editar task" : "Nova task"}
-          </h2>
-          <button className={styles.btnClose} onClick={onClose}>
-            ✕
-          </button>
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label}>Título</label>
-          <input
-            className={styles.input}
-            type="text"
-            placeholder="Ex: Implementar autenticação"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label}>Descrição</label>
-          <textarea
-            className={styles.textarea}
-            placeholder="Descreva a task em detalhes..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label className={styles.label}>Prioridade</label>
-          <div className={styles.flagRow}>
-            {PRIORITY_OPTIONS.map((p) => (
-              <button
-                key={p.value}
-                className={`${styles.flagBtn} ${priority === p.value ? styles.flagBtnActive : ""}`}
-                style={{ "--flag-color": p.color }}
-                onClick={() => setPriority(priority === p.value ? "" : p.value)}
-              >
-                {p.label}
-              </button>
-            ))}
+    <>
+      <div className={styles.overlay} onClick={onClose}>
+        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modalHeader}>
+            <h2 className={styles.modalTitle}>
+              {isEditing ? "Editar task" : "Nova task"}
+            </h2>
+            <button className={styles.btnClose} onClick={onClose}>
+              ✕
+            </button>
           </div>
-        </div>
 
-        <div className={styles.field}>
-          <label className={styles.label}>Etiquetas</label>
-          <div className={styles.flagRow}>
-            {LABEL_OPTIONS.map((l) => (
-              <button
-                key={l.value}
-                className={`${styles.flagBtn} ${labels.includes(l.value) ? styles.flagBtnActive : ""}`}
-                style={{ "--flag-color": l.color }}
-                onClick={() => toggleLabel(l.value)}
-              >
-                {l.label}
-              </button>
-            ))}
+          <div className={styles.field}>
+            <label className={styles.label}>Título</label>
+            <input
+              className={styles.input}
+              type="text"
+              placeholder="Ex: Implementar autenticação"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+            />
           </div>
-        </div>
 
-        <div className={styles.field}>
-          <label className={styles.label}>Subtasks</label>
-          <div className={styles.subtaskList}>
-            {subtasks.map((sub, i) => (
-              <div key={i} className={styles.subtaskRow}>
-                <input
-                  className={styles.input}
-                  type="text"
-                  placeholder={`Subtask ${i + 1}`}
-                  value={sub}
-                  onChange={(e) => handleSubtaskChange(i, e.target.value)}
-                />
+          <div className={styles.field}>
+            <label className={styles.label}>Descrição</label>
+            <textarea
+              className={styles.textarea}
+              placeholder="Descreva a task em detalhes..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Prioridade</label>
+            <div className={styles.flagRow}>
+              {PRIORITY_OPTIONS.map((p) => (
                 <button
-                  className={styles.btnRemove}
-                  onClick={() => handleRemoveSubtask(i)}
+                  key={p.value}
+                  className={`${styles.flagBtn} ${priority === p.value ? styles.flagBtnActive : ""}`}
+                  style={{ "--flag-color": p.color }}
+                  onClick={() =>
+                    setPriority(priority === p.value ? "" : p.value)
+                  }
                 >
-                  ✕
+                  {p.label}
                 </button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <button className={styles.btnAddSubtask} onClick={handleAddSubtask}>
-            + Adicionar subtask
-          </button>
-        </div>
 
-        <div className={styles.modalFooter}>
-          <button className={styles.btnCancel} onClick={onClose}>
-            Cancelar
-          </button>
-          <button
-            className={styles.btnSave}
-            onClick={handleSave}
-            disabled={!title.trim()}
-          >
-            {isEditing ? "Salvar alterações" : "Criar task"}
-          </button>
+          <div className={styles.field}>
+            <div className={styles.labelRow}>
+              <label className={styles.label}>Etiquetas</label>
+              <button
+                className={styles.btnAddFlag}
+                onClick={() => setShowFlagsManager(true)}
+                title="Gerenciar etiquetas"
+              >
+                + Gerenciar
+              </button>
+            </div>
+            <div className={styles.flagRow}>
+              {allFlags.map((f) => (
+                <button
+                  key={f.id}
+                  className={`${styles.flagBtn} ${labels.includes(f.id) ? styles.flagBtnActive : ""}`}
+                  style={{
+                    "--flag-color": f.color,
+                    fontWeight: f.bold ? 600 : 400,
+                  }}
+                  onClick={() => toggleLabel(f.id)}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Subtasks</label>
+            <div className={styles.subtaskList}>
+              {subtasks.map((sub, i) => (
+                <div key={i} className={styles.subtaskRow}>
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder={`Subtask ${i + 1}`}
+                    value={sub}
+                    onChange={(e) => handleSubtaskChange(i, e.target.value)}
+                  />
+                  <button
+                    className={styles.btnRemove}
+                    onClick={() => handleRemoveSubtask(i)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className={styles.btnAddSubtask} onClick={handleAddSubtask}>
+              + Adicionar subtask
+            </button>
+          </div>
+
+          <div className={styles.modalFooter}>
+            <button className={styles.btnCancel} onClick={onClose}>
+              Cancelar
+            </button>
+            <button
+              className={styles.btnSave}
+              onClick={handleSave}
+              disabled={!title.trim()}
+            >
+              {isEditing ? "Salvar alterações" : "Criar task"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showFlagsManager && (
+        <FlagsManager onClose={() => setShowFlagsManager(false)} />
+      )}
+    </>
   );
 }

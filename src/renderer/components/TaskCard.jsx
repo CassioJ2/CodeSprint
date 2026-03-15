@@ -1,9 +1,16 @@
 import styles from "./TaskCard.module.css";
+import { useFlags } from "../context/FlagsContext";
 
 const STATUS_CONFIG = {
   pending: { label: "Pendente", color: "#4F4F4F" },
   in_progress: { label: "Em andamento", color: "#00A676" },
   done: { label: "Concluído", color: "#94D2BD" },
+};
+
+const PRIORITY_COLORS = {
+  low: { color: "#4F4F4F", label: "Baixa" },
+  medium: { color: "#00A676", label: "Média" },
+  high: { color: "#E85D24", label: "Alta" },
 };
 
 const TrashIcon = () => (
@@ -25,6 +32,7 @@ const TrashIcon = () => (
 );
 
 export default function TaskCard({ task, onStatusChange, onDelete, onEdit }) {
+  const { allFlags } = useFlags();
   const subtasksDone =
     task.subtasks?.filter((s) => s.status === "done").length ?? 0;
   const subtasksTotal = task.subtasks?.length ?? 0;
@@ -39,6 +47,9 @@ export default function TaskCard({ task, onStatusChange, onDelete, onEdit }) {
     e.stopPropagation();
     callback();
   };
+
+  const taskLabels = allFlags.filter((f) => task.labels?.includes(f.id));
+  const priority = task.priority ? PRIORITY_COLORS[task.priority] : null;
 
   return (
     <div
@@ -57,54 +68,28 @@ export default function TaskCard({ task, onStatusChange, onDelete, onEdit }) {
         </button>
       </div>
 
-      {(task.priority || task.labels?.length > 0) && (
+      {(priority || taskLabels.length > 0) && (
         <div className={styles.flags}>
-          {task.priority && (
+          {priority && (
             <span
               className={styles.flag}
-              style={{
-                "--flag-color":
-                  task.priority === "high"
-                    ? "#E85D24"
-                    : task.priority === "medium"
-                      ? "#00A676"
-                      : "#4F4F4F",
-              }}
+              style={{ "--flag-color": priority.color }}
             >
-              {task.priority === "high"
-                ? "Alta"
-                : task.priority === "medium"
-                  ? "Média"
-                  : "Baixa"}
+              {priority.label}
             </span>
           )}
-          {task.labels?.map((l) => {
-            const COLORS = {
-              bug: "#C0392B",
-              feature: "#005F73",
-              urgente: "#E85D24",
-              melhoria: "#00A676",
-              docs: "#758956",
-              teste: "#2B2D42",
-            };
-            const NAMES = {
-              bug: "Bug",
-              feature: "Feature",
-              urgente: "Urgente",
-              melhoria: "Melhoria",
-              docs: "Docs",
-              teste: "Teste",
-            };
-            return (
-              <span
-                key={l}
-                className={styles.flag}
-                style={{ "--flag-color": COLORS[l] }}
-              >
-                {NAMES[l]}
-              </span>
-            );
-          })}
+          {taskLabels.map((f) => (
+            <span
+              key={f.id}
+              className={styles.flag}
+              style={{
+                "--flag-color": f.color,
+                fontWeight: f.bold ? 600 : 400,
+              }}
+            >
+              {f.name}
+            </span>
+          ))}
         </div>
       )}
 
