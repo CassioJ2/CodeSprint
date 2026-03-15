@@ -12,15 +12,15 @@
   - [ ] Conferir icone do app
   - [ ] Testar login com GitHub
   - [ ] Testar vinculacao de repositorio local
-- [ ] Revisar materiais visuais da apresentacao <!--meta:{"description":"Fechar os elementos visuais da entrega para banca e demo.","priority":"medium","labels":["design","apresentacao","branding"],"assignee":"marialuisasanches"}-->
-  - [x] Escolher screenshots finais
-  - [ ] Revisar consistencia do nome CodeSprint
-  - [ ] Ajustar detalhes visuais finais
-- [x] Criar roteiro final de apresentacao <!--meta:{"description":"Montar uma narrativa curta e clara para demonstrar o valor do produto.","priority":"medium","labels":["pitch","demo"],"assignee":"CassioJ2"}-->
+- [ ] Criar roteiro final de apresentacao <!--meta:{"description":"Montar uma narrativa curta e clara para demonstrar o valor do produto.","priority":"medium","labels":["pitch","demo"],"assignee":"CassioJ2"}-->
   - [ ] Explicar o problema
   - [ ] Mostrar a solucao local-first
   - [ ] Mostrar branch tasks e sync
   - [ ] Encerrar com os diferenciais
+- [/] Revisar materiais visuais da apresentacao <!--meta:{"description":"Fechar os elementos visuais da entrega para banca e demo.","priority":"medium","labels":["design","apresentacao","branding"],"assignee":"marialuisasanches"}-->
+  - [x] Escolher screenshots finais
+  - [ ] Revisar consistencia do nome CodeSprint
+  - [ ] Ajustar detalhes visuais finais
 - [x] Melhorar experiencia de demo do produto <!--meta:{"description":"Deixar a apresentacao do backlog, board e sync pronta para demonstracao ao vivo.","priority":"high","labels":["demo","ux","pitch"],"cardType":"feature","assignee":"marialuisasanches"}-->
   - [ ] Revisar textos da interface
   - [ ] Conferir legibilidade dos cards
