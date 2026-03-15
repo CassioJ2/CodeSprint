@@ -8,10 +8,6 @@
   - [ ] Validar comportamento de pull remoto no app
   - [ ] Revisar comportamento de merge em conflito
   - [ ] Confirmar sync de AGENTS.md e TASKS_WORKFLOW.md
-- [/] Melhorar experiencia de demo do produto <!--meta:{"description":"Deixar a apresentacao do backlog, board e sync pronta para demonstracao ao vivo.","priority":"high","labels":["demo","ux","pitch"],"cardType":"feature","assignee":"marialuisasanches"}-->
-  - [ ] Revisar textos da interface
-  - [ ] Conferir legibilidade dos cards
-  - [ ] Testar fluxo board -> backlog -> sync
 - [ ] Validar instalador Windows final <!--meta:{"description":"Garantir que o executavel esteja consistente para demonstracao e entrega.","priority":"medium","labels":["release","windows","qa"],"status":"backlog","assignee":"CassioJ2"}-->
   - [ ] Conferir icone do app
   - [ ] Testar login com GitHub
@@ -25,4 +21,8 @@
   - [ ] Mostrar a solucao local-first
   - [ ] Mostrar branch tasks e sync
   - [ ] Encerrar com os diferenciais
+- [x] Melhorar experiencia de demo do produto <!--meta:{"description":"Deixar a apresentacao do backlog, board e sync pronta para demonstracao ao vivo.","priority":"high","labels":["demo","ux","pitch"],"cardType":"feature","assignee":"marialuisasanches"}-->
+  - [ ] Revisar textos da interface
+  - [ ] Conferir legibilidade dos cards
+  - [ ] Testar fluxo board -> backlog -> sync
 - [ ] teste <!--meta:{"cardType":"spike"}-->
