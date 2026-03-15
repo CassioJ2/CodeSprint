@@ -14,6 +14,7 @@ import TaskModal from "../components/TaskModal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import styles from "./KanbanPage.module.css";
 import Toast from "../components/Toast";
+import logo from "../logo.svg";
 
 const COLUMNS = [
   { key: "pending", label: "Pendente", color: "#4F4F4F" },
@@ -158,20 +159,7 @@ export default function KanbanPage({
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
-            <rect
-              width="40"
-              height="40"
-              rx="10"
-              fill="var(--color-teal-dark)"
-            />
-            <path
-              d="M10 20h20M20 10v20"
-              stroke="var(--color-teal-light)"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          </svg>
+          <img src={logo} width="60" height="60" alt="CodeSprint" />
           <h1 className={styles.appName}>CodeSprint</h1>
           {activeRepo && (
             <span className={styles.repoBadge}>
