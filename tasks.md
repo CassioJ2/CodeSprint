@@ -4,6 +4,30 @@
 - [ ] Definir primeiras tasks
   - [ ] Revisar backlog
   - [ ] Priorizar sprint
-- [x] teste 1 <!--meta:{"priority":"low","cardType":"blocker"}-->
-  - [ ] testee 1
-  - [ ] testee 2
+- [ ] teste <!--meta:{"description":"aa","priority":"low","labels":["bug"]}-->
+- [ ] aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa <!--meta:{"description":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","priority":"high","labels":["bug","urgente","melhoria","docs","feature"],"status":"backlog","cardType":"blocker","assignee":"CassioJ2"}-->
+  - [ ] a
+  - [ ] b
+  - [ ] c
+  - [ ] d
+  - [ ] e
+  - [ ] f
+  - [ ] g
+  - [ ] h
+  - [ ] i
+  - [ ] j
+  - [ ] k
+  - [ ] l
+  - [ ] m
+  - [ ] n
+  - [ ] o
+  - [ ] p
+  - [ ] q
+  - [ ] r
+  - [ ] s
+  - [ ] t
+  - [ ] u
+  - [ ] v
+  - [ ] 1
+  - [ ] 2
+  - [ ] 3
