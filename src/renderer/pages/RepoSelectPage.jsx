@@ -130,7 +130,12 @@ export default function RepoSelectPage({
       });
       const session = await window.electron.invoke("session:get");
       onRepoSelected({
-        repo: { owner: selected.owner, repo: selected.name, localPath: localPath || null },
+        repo: session.activeRepo || {
+          owner: selected.owner,
+          repo: selected.name,
+          localPath: localPath || null,
+          tasksBranch: "tasks",
+        },
         tasks,
         hasDirtyCache: !!session.tasksDirty,
       });

@@ -42,7 +42,7 @@ export const IPC_CONTRACT = {
             errors: []
         },
         'tasks:load': {
-            description: 'Carrega o tasks.md do repositorio selecionado.',
+            description: 'Carrega o tasks.md do repositorio selecionado, garantindo a branch dedicada de tasks e o contexto local para IA.',
             args: [{ owner: 'string', repo: 'string', localPath: 'string (optional)' }],
             returns: 'Array<Task>',
             errors: ['Not authenticated']
@@ -65,6 +65,16 @@ export const IPC_CONTRACT = {
             },
             errors: ['No active repo selected']
         },
+        'tasks:pull': {
+            description: 'Busca a versao remota mais recente da branch de tasks e aplica localmente quando nao houver alteracoes pendentes.',
+            args: [],
+            returns: {
+                mode: '"applied" | "conflict"',
+                sha: 'string | null',
+                tasks: 'Array<Task>'
+            },
+            errors: ['Not authenticated', 'No active repo selected']
+        },
         'tasks:save': {
             description: 'Envia o cache local para o GitHub e atualiza o cache com a versao remota final.',
             args: [{ tasks: 'Array<Task>', commitMessage: 'string (optional)' }],
@@ -84,7 +94,7 @@ export const IPC_CONTRACT = {
             args: [],
             returns: {
                 isAuthenticated: 'boolean',
-                activeRepo: '{ owner, repo, localPath? } | null',
+                activeRepo: '{ owner, repo, localPath?, tasksBranch? } | null',
                 tasksDirty: 'boolean'
             },
             errors: []

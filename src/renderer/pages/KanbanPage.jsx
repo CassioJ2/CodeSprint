@@ -19,6 +19,52 @@ import { useColumns } from "../context/ColumnsContext";
 import { useFlags } from "../context/FlagsContext";
 import ColumnsManager from "../components/ColumnsManager";
 
+function mergeTasksForReview(localTasks, remoteTasks) {
+  const localById = new Map(localTasks.map((task) => [task.id, task]));
+  const remoteById = new Map(remoteTasks.map((task) => [task.id, task]));
+  const merged = [];
+
+  for (const localTask of localTasks) {
+    const remoteTask = remoteById.get(localTask.id);
+
+    if (!remoteTask) {
+      merged.push(localTask);
+      continue;
+    }
+
+    if (JSON.stringify(localTask) === JSON.stringify(remoteTask)) {
+      merged.push(localTask);
+      continue;
+    }
+
+    const localSubtasks = Array.isArray(localTask.subtasks) ? localTask.subtasks : [];
+    const remoteSubtasks = Array.isArray(remoteTask.subtasks) ? remoteTask.subtasks : [];
+    const localSubtasksById = new Map(localSubtasks.map((subtask) => [subtask.id, subtask]));
+    const mergedSubtasks = [...localSubtasks];
+
+    for (const remoteSubtask of remoteSubtasks) {
+      if (!localSubtasksById.has(remoteSubtask.id)) {
+        mergedSubtasks.push(remoteSubtask);
+      }
+    }
+
+    merged.push({
+      ...remoteTask,
+      ...localTask,
+      labels: Array.from(new Set([...(remoteTask.labels || []), ...(localTask.labels || [])])),
+      subtasks: mergedSubtasks,
+    });
+  }
+
+  for (const remoteTask of remoteTasks) {
+    if (!localById.has(remoteTask.id)) {
+      merged.push(remoteTask);
+    }
+  }
+
+  return merged;
+}
+
 export default function KanbanPage({
   initialTasks = [],
   initialHasChanges = false,
@@ -205,6 +251,36 @@ export default function KanbanPage({
     }
   };
 
+  const handlePullRemote = async () => {
+    try {
+      setStep("syncing");
+      setError("");
+      const result = await window.electron.invoke("tasks:pull");
+
+      if (result?.mode === "conflict") {
+        setIncomingConflict({ tasks: result.tasks || [], source: "github" });
+        setStep("ready");
+        setToast({
+          message: "Mudancas remotas encontradas. Revise antes de aplicar.",
+          type: "warning",
+        });
+        return;
+      }
+
+      setTasks(result?.tasks || []);
+      setHasChanges(false);
+      setIncomingConflict(null);
+      setStep("ready");
+      setToast({
+        message: "Versao remota puxada com sucesso.",
+        type: "success",
+      });
+    } catch (err) {
+      setError(err.message);
+      setStep("error");
+    }
+  };
+
   const findColumn = (taskId) =>
     columns.find((col) =>
       tasks.find((t) => t.id === taskId && t.status === col.id),
@@ -359,6 +435,57 @@ export default function KanbanPage({
     }
   };
 
+  const handleMergeIncoming = async () => {
+    if (!incomingConflict) return;
+
+    try {
+      const mergedTasks = mergeTasksForReview(tasksRef.current, incomingConflict.tasks);
+      setTasks(mergedTasks);
+      setHasChanges(true);
+      await persistTasksLocally(mergedTasks, true);
+      setIncomingConflict(null);
+      setToast({
+        message: "Merge local criado. Revise e sincronize quando estiver pronto.",
+        type: "success",
+      });
+    } catch (err) {
+      setError(err.message);
+      setStep("error");
+    }
+  };
+
+  const incomingSummary = useMemo(() => {
+    if (!incomingConflict) {
+      return null;
+    }
+
+    const localIds = new Set(tasks.map((task) => task.id));
+    const incomingIds = new Set(incomingConflict.tasks.map((task) => task.id));
+    let changed = 0;
+    let added = 0;
+
+    for (const incomingTask of incomingConflict.tasks) {
+      if (!localIds.has(incomingTask.id)) {
+        added += 1;
+        continue;
+      }
+
+      const localTask = tasks.find((task) => task.id === incomingTask.id);
+      if (JSON.stringify(localTask) !== JSON.stringify(incomingTask)) {
+        changed += 1;
+      }
+    }
+
+    let localOnly = 0;
+    for (const task of tasks) {
+      if (!incomingIds.has(task.id)) {
+        localOnly += 1;
+      }
+    }
+
+    return { added, changed, localOnly };
+  }, [incomingConflict, tasks]);
+
   const tasksByStatus = (status) => tasks.filter((t) => t.status === status);
   const backlogTasks = tasks.filter((task) => task.status === "backlog");
   const filteredBacklogTasks = useMemo(() => {
@@ -409,6 +536,7 @@ export default function KanbanPage({
     backlogTasks,
   ]);
   const storageModeLabel = activeRepo?.localPath ? "Repo local" : "Cache interno";
+  const tasksBranchLabel = activeRepo?.tasksBranch || "tasks";
 
   return (
     <div className={styles.container}>
@@ -423,6 +551,12 @@ export default function KanbanPage({
               </span>
               <span className={styles.storageBadge}>
                 {storageModeLabel}
+              </span>
+              <span className={styles.branchBadge}>
+                Branch de tasks: {tasksBranchLabel}
+              </span>
+              <span className={styles.managedFilesBadge}>
+                Arquivos: tasks.md + playbook/
               </span>
             </>
           )}
@@ -454,6 +588,9 @@ export default function KanbanPage({
             onClick={handleOpenTasksFile}
           >
             Abrir tasks.md
+          </button>
+          <button className={styles.btnFlags} onClick={handlePullRemote}>
+            Puxar remoto
           </button>
           <button className={styles.btnFlags} onClick={onChangeRepo}>
             Trocar repo
@@ -497,10 +634,18 @@ export default function KanbanPage({
             {incomingConflict.source === "local"
               ? "O arquivo tasks.md local mudou fora do app e voce tem mudancas locais pendentes."
               : "Existe uma versao mais nova no GitHub e voce tem mudancas locais pendentes."}
+            {incomingSummary && (
+              <span className={styles.conflictSummary}>
+                {incomingSummary.added} novas, {incomingSummary.changed} alteradas, {incomingSummary.localOnly} so locais.
+              </span>
+            )}
           </div>
           <div className={styles.conflictActions}>
             <button className={styles.btnFlags} onClick={handleKeepLocal}>
               Manter local
+            </button>
+            <button className={styles.btnFlags} onClick={handleMergeIncoming}>
+              Mesclar
             </button>
             <button className={styles.btnPrimary} onClick={handleLoadRemote}>
               {incomingConflict.source === "local"
@@ -523,7 +668,7 @@ export default function KanbanPage({
             Esse repositorio esta sem tasks no momento. Voce pode criar uma task
             nova agora ou recriar o <code>tasks.md</code> inicial com o modelo
             padrao. Se preferir, abra o arquivo no VS Code e edite por la com o
-            app aberto.
+            app aberto. O app sincroniza esse fluxo pela branch <code>{tasksBranchLabel}</code>.
           </p>
           <div className={styles.emptyActions}>
             <button

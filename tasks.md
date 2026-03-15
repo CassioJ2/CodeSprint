@@ -1,42 +1,32 @@
 # Tasks
 
-- [ ] Finalizar README para a competicao <!--meta:{"status":"backlog","description":"Revisar a apresentacao do projeto para jurados, com texto claro, screenshots e narrativa de produto.","priority":"high","labels":["docs","pitch","competicao"],"cardType":"feature","assignee":"Cassio"}-->
-  - [ ] Capturar screenshot da tela de login
-  - [ ] Capturar screenshot da selecao de repositorio
-  - [ ] Capturar screenshot da view de backlog
-  - [ ] Capturar screenshot da view de board
-  - [ ] Inserir as imagens no README
+- [ ] Finalizar submissao da competicao <!--meta:{"status":"backlog","description":"Fechar os materiais e o estado final do projeto para entrega e apresentacao.","priority":"high","labels":["competicao","release","pitch"],"cardType":"milestone","assignee":"CassioJ2"}-->
+  - [ ] Revisar README com screenshots
+  - [ ] Validar nome, logo e branding final
+  - [ ] Conferir se o repositorio esta limpo para avaliacao
 
-- [ ] Preparar materiais visuais da submissao <!--meta:{"status":"backlog","description":"Garantir que logo, identidade visual e arquivos de apresentacao estejam consistentes para entrega.","priority":"high","labels":["design","branding","competicao"],"cardType":"feature","assignee":"Amiga"}-->
-  - [ ] Revisar a logo usada no executavel
-  - [ ] Definir uma capa ou arte principal da apresentacao
-  - [ ] Validar se as cores e nome do produto estao consistentes
+- [ ] Refinar fluxo de sincronizacao da branch tasks <!--meta:{"status":"backlog","description":"Garantir que o fluxo de tarefas fique previsivel, seguro e claro para o time.","priority":"high","labels":["sync","github","tasks-branch"],"cardType":"feature","assignee":"CassioJ2"}-->
+  - [ ] Validar comportamento de pull remoto no app
+  - [ ] Revisar comportamento de merge em conflito
+  - [ ] Confirmar sync de AGENTS.md e TASKS_WORKFLOW.md
 
-- [ ] Validar instalador Windows do release <!--meta:{"status":"backlog","description":"Testar o build final para garantir que a experiencia esteja pronta para demonstracao.","priority":"high","labels":["release","qa","windows"],"cardType":"milestone","assignee":"Cassio"}-->
-  - [ ] Instalar o app em ambiente limpo
-  - [ ] Verificar se o icone aparece corretamente
-  - [ ] Testar login com GitHub
-  - [ ] Testar selecao de repositorio e vinculacao local
-  - [ ] Testar atualizacao de tasks pelo arquivo markdown
-
-- [ ] Refinar experiencia do backlog para demo <!--meta:{"status":"backlog","description":"Deixar a jornada principal do produto mais clara para apresentacao ao vivo.","priority":"medium","labels":["ux","backlog","demo"],"cardType":"feature","assignee":"Amiga"}-->
+- [ ] Melhorar experiencia de demo do produto <!--meta:{"status":"backlog","description":"Deixar a apresentacao do backlog, board e sync pronta para demonstracao ao vivo.","priority":"high","labels":["demo","ux","pitch"],"cardType":"feature","assignee":"marialuisasanches"}-->
   - [ ] Revisar textos da interface
-  - [ ] Conferir se a navegacao entre backlog e board esta intuitiva
-  - [ ] Verificar se os cards estao legiveis na demo
+  - [ ] Conferir legibilidade dos cards
+  - [ ] Testar fluxo board -> backlog -> sync
 
-- [ ] Montar roteiro da apresentacao <!--meta:{"status":"backlog","description":"Preparar a narrativa da demo para mostrar problema, solucao e diferencial do produto.","priority":"high","labels":["pitch","demo","apresentacao"],"cardType":"milestone","assignee":"Cassio"}-->
-  - [ ] Escrever abertura com o problema
-  - [ ] Mostrar o fluxo local-first
-  - [ ] Demonstrar sync com GitHub
-  - [ ] Encerrar com os diferenciais do produto
+- [ ] Validar instalador Windows final <!--meta:{"status":"backlog","description":"Garantir que o executavel esteja consistente para demonstracao e entrega.","priority":"medium","labels":["release","windows","qa"],"cardType":"task","assignee":"CassioJ2"}-->
+  - [ ] Conferir icone do app
+  - [ ] Testar login com GitHub
+  - [ ] Testar vinculacao de repositorio local
 
-- [ ] Revisar consistencia visual e textos finais <!--meta:{"status":"backlog","description":"Fazer uma passada final em naming, textos e elementos visuais antes da entrega.","priority":"medium","labels":["ux","copy","release"],"cardType":"task","assignee":"Amiga"}-->
-  - [ ] Revisar nomes de botoes e labels
-  - [ ] Conferir textos do estado vazio
-  - [ ] Validar layout em resolucao de apresentacao
+- [ ] Revisar materiais visuais da apresentacao <!--meta:{"status":"backlog","description":"Fechar os elementos visuais da entrega para banca e demo.","priority":"medium","labels":["design","apresentacao","branding"],"cardType":"task","assignee":"marialuisasanches"}-->
+  - [ ] Escolher screenshots finais
+  - [ ] Revisar consistencia do nome CodeSprint
+  - [ ] Ajustar detalhes visuais finais
 
-- [ ] Criar checklist final da entrega <!--meta:{"status":"backlog","description":"Consolidar o que precisa estar pronto no momento da submissao e da demo.","priority":"medium","labels":["release","organizacao"],"cardType":"task","assignee":"Cassio"}-->
-  - [ ] Confirmar arquivos do repositorio
-  - [ ] Confirmar build gerado
-  - [ ] Confirmar README atualizado
-  - [ ] Confirmar roteiro da apresentacao
+- [ ] Criar roteiro final de apresentacao <!--meta:{"status":"backlog","description":"Montar uma narrativa curta e clara para demonstrar o valor do produto.","priority":"medium","labels":["pitch","demo"],"cardType":"task","assignee":"CassioJ2"}-->
+  - [ ] Explicar o problema
+  - [ ] Mostrar a solucao local-first
+  - [ ] Mostrar branch tasks e sync
+  - [ ] Encerrar com os diferenciais

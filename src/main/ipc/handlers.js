@@ -1,11 +1,20 @@
 import { dialog, shell } from 'electron'
 import { startDeviceFlow, pollForToken } from '../github/auth'
-import { getRepos, getFile, updateFile, getRepoCollaborators } from '../github/client'
+import { ensureBranch, getRepos, getFile, updateFile, getRepoCollaborators } from '../github/client'
 import { parse, stringify } from '../parser/index'
 import store from '../store'
 import { createInitialTasksMarkdown } from '../tasks/template'
 import { readLocalTasksMarkdown, writeLocalTasksMarkdown } from '../tasks/cache'
-import { getTasksPath, readRepoTasksMarkdown, writeRepoTasksMarkdown, validateLocalRepoPath } from '../tasks/local-repo'
+import {
+    ensureRepoAiContextFiles,
+    getTasksPath,
+    readRepoAiContextFiles,
+    readRepoContextFile,
+    readRepoTasksMarkdown,
+    writeRepoContextFile,
+    writeRepoTasksMarkdown,
+    validateLocalRepoPath
+} from '../tasks/local-repo'
 import { startPoller, stopPoller } from '../watcher/poller'
 import { createIpcHandlers } from './contracts'
 import { IPC_CONTRACT } from './spec'
@@ -26,13 +35,18 @@ export function registerIpcHandlers(ipcMain, mainWindow) {
         getRepoCollaborators,
         getFile,
         updateFile,
+        ensureBranch,
         parse,
         stringify,
         readLocalTasksMarkdown,
         writeLocalTasksMarkdown,
         readRepoTasksMarkdown,
         writeRepoTasksMarkdown,
+        readRepoContextFile,
+        writeRepoContextFile,
+        readRepoAiContextFiles,
         validateLocalRepoPath,
+        ensureRepoAiContextFiles,
         openTasksFile: async (activeRepo) => {
             if (!activeRepo?.localPath) {
                 throw new Error('No local repo linked. Link a local folder before opening tasks.md.')
