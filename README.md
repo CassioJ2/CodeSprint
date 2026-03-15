@@ -65,23 +65,23 @@ Essa abordagem mantem o projeto transparente, portavel e facil de integrar ao fl
 
 ### Tela de Login
 
-`[Add screenshot here]`
+![Tela de login](img/codesprintmain.png) 
 
 ### Selecao de Repositorio
 
-`[Add screenshot here]`
+![Selecao de Repositorio](img/repomain.png) 
 
 ### Visualizacao de Backlog
 
-`[Add screenshot here]`
+![Visualizacao de Backlog](img/backlogmain.png) 
 
 ### Visualizacao de Board
-
-`[Add screenshot here]`
+ 
+![Visualizacao de Backlog](img/boardmain.png)
 
 ### Detalhes da Tarefa / Fluxo de Edicao
 
-`[Add screenshot here]`
+![Detalhes da Tarefa / Fluxo de Edicao](img/edicaomain.png)
 
 ## Stack Tecnica
 
