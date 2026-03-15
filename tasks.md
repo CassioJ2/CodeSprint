@@ -1,7 +1,10 @@
 # Tasks
 
-- [/] Setup inicial do projeto
-- [/] Definir primeiras tasks <!--meta:{"priority":"medium","labels":["bug","feature","urgente","melhoria","docs"],"cardType":"type-1773612995230","assignee":"CassioJ2"}-->
-  - [x] Revisar backlog
-  - [x] Priorizar sprint
-  - [x] 1
+- [ ] Setup inicial do projeto
+- [ ] nome <!--meta:{"description":"descriçao","priority":"medium","labels":["bug"],"cardType":"type-1773613082643","assignee":"eggdraz"}-->
+  - [ ] 1
+  - [ ] 2
+- [ ] Definir primeiras tasks <!--meta:{"cardType":"type-1773612995230"}-->
+  - [ ] Revisar backlog
+  - [ ] Priorizar sprint
+  - [ ] 1
