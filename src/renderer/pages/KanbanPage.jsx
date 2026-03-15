@@ -60,14 +60,7 @@ export default function KanbanPage({
     );
 
     window.electron
-      .invoke("session:get")
-      .then((session) => {
-        if (!session.activeRepo) {
-          onLogout();
-          return;
-        }
-        return window.electron.invoke("tasks:init");
-      })
+      .invoke("tasks:init")
       .then((result) => {
         if (!result) return;
         setTasks(result.tasks);
