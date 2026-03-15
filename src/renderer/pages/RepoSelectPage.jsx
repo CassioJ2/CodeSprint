@@ -34,7 +34,7 @@ export default function RepoSelectPage({ onRepoSelected }) {
     try {
       setStep("confirming");
       await window.electron.invoke("tasks:load", {
-        owner: selected.owner.login,
+        owner: selected.owner,
         repo: selected.name,
       });
       onRepoSelected();

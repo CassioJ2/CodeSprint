@@ -8,10 +8,12 @@ export default function App() {
 
   useEffect(() => {
     window.electron.invoke("session:get").then((session) => {
-      if (session.isAuthenticated && session.activeRepo) {
+      if (session.isAuthenticated && session.activeRepo?.owner) {
         setPage("kanban");
       } else if (session.isAuthenticated) {
         setPage("repo-select");
+      } else {
+        setPage("login");
       }
     });
   }, []);

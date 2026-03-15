@@ -10,6 +10,7 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 import KanbanColumn from "../components/KanbanColumn";
 import TaskCard from "../components/TaskCard";
+import TaskModal from "../components/TaskModal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import styles from "./KanbanPage.module.css";
 
@@ -24,6 +25,7 @@ export default function KanbanPage({ onLogout }) {
   const [step, setStep] = useState("loading");
   const [error, setError] = useState("");
   const [activeTask, setActiveTask] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -36,7 +38,26 @@ export default function KanbanPage({ onLogout }) {
         setTasks(updatedTasks);
       },
     );
-    setStep("ready");
+
+    window.electron
+      .invoke("session:get")
+      .then((session) => {
+        if (!session.activeRepo) {
+          onLogout(); // volta para login/repo-select
+          return;
+        }
+        return window.electron.invoke("tasks:init");
+      })
+      .then((result) => {
+        if (!result) return;
+        setTasks(result.tasks);
+        setStep("ready");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setStep("error");
+      });
+
     return () => cleanup?.();
   }, []);
 
@@ -51,13 +72,10 @@ export default function KanbanPage({ onLogout }) {
 
   const handleDragOver = ({ active, over }) => {
     if (!over) return;
-
     const activeCol = findColumn(active.id);
     const overCol =
       COLUMNS.find((c) => c.key === over.id)?.key || findColumn(over.id);
-
     if (!activeCol || !overCol || activeCol === overCol) return;
-
     setTasks((prev) =>
       prev.map((t) => (t.id === active.id ? { ...t, status: overCol } : t)),
     );
@@ -66,11 +84,9 @@ export default function KanbanPage({ onLogout }) {
   const handleDragEnd = async ({ active, over }) => {
     setActiveTask(null);
     if (!over) return;
-
     const updated = [...tasks];
     const activeIndex = updated.findIndex((t) => t.id === active.id);
     const overIndex = updated.findIndex((t) => t.id === over.id);
-
     if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
       const reordered = arrayMove(updated, activeIndex, overIndex);
       setTasks(reordered);
@@ -102,6 +118,12 @@ export default function KanbanPage({ onLogout }) {
     await saveTasks(updated);
   };
 
+  const handleCreateTask = async (newTask) => {
+    const updated = [...tasks, newTask];
+    setTasks(updated);
+    await saveTasks(updated);
+  };
+
   const handleLogout = async () => {
     await window.electron.invoke("session:clear");
     onLogout();
@@ -128,6 +150,15 @@ export default function KanbanPage({ onLogout }) {
             />
           </svg>
           <h1 className={styles.appName}>CodeSprint</h1>
+        </div>
+
+        <div className={styles.headerCenter}>
+          <button
+            className={styles.btnNewTask}
+            onClick={() => setShowModal(true)}
+          >
+            + Nova task
+          </button>
         </div>
 
         <div className={styles.headerRight}>
@@ -181,6 +212,13 @@ export default function KanbanPage({ onLogout }) {
             )}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {showModal && (
+        <TaskModal
+          onSave={handleCreateTask}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </div>
   );

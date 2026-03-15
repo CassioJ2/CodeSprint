@@ -87,3 +87,29 @@
   color: var(--text-muted);
   font-size: var(--text-sm);
 }
+
+.headerCenter {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.btnNewTask {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-teal-dark);
+  color: var(--text-on-brand);
+  border: none;
+  font-weight: var(--font-medium);
+  transition: background var(--duration-fast) var(--ease-default);
+}
+
+.btnNewTask:hover {
+  background: var(--color-teal);
+}
+
+.syncedText {
+  font-size: var(--text-sm);
+  color: var(--color-teal-light);
+}
