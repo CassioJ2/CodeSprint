@@ -86,6 +86,7 @@ async function syncManagedFilesToRemote({
     owner,
     repo,
     branch,
+    getFile,
     updateFile,
     readRepoContextFile,
     localPath,
@@ -101,21 +102,78 @@ async function syncManagedFilesToRemote({
             continue
         }
 
-        const result = await updateFile(
-            token,
-            owner,
-            repo,
-            fileName,
-            content,
-            nextRemoteFileShas[fileName] || null,
-            `chore: update ${fileName}`,
-            { branch }
-        )
+        let fileSha = nextRemoteFileShas[fileName] || null
 
-        nextRemoteFileShas[fileName] = result.sha
+        try {
+            const result = await updateFile(
+                token,
+                owner,
+                repo,
+                fileName,
+                content,
+                fileSha,
+                `chore: update ${fileName}`,
+                { branch }
+            )
+
+            nextRemoteFileShas[fileName] = result.sha
+        } catch (error) {
+            if (!isShaConflict(error)) {
+                throw error
+            }
+
+            const remoteFile = await getFile(token, owner, repo, fileName, {
+                ref: branch
+            })
+
+            if (remoteFile?.content === content) {
+                nextRemoteFileShas[fileName] = remoteFile.sha
+                continue
+            }
+
+            const retryResult = await updateFile(
+                token,
+                owner,
+                repo,
+                fileName,
+                content,
+                remoteFile?.sha || null,
+                `chore: update ${fileName}`,
+                { branch }
+            )
+
+            nextRemoteFileShas[fileName] = retryResult.sha
+        }
     }
 
     return nextRemoteFileShas
+}
+
+async function loadRemoteManagedFileShas({
+    token,
+    owner,
+    repo,
+    branch,
+    getFile,
+    writeRepoContextFile,
+    localPath,
+    localContextFiles = {}
+}) {
+    const remoteFileShas = {}
+
+    for (const fileName of REMOTE_TASK_FILES) {
+        const remoteContextFile = await getFile(token, owner, repo, fileName, {
+            ref: branch
+        })
+
+        remoteFileShas[fileName] = remoteContextFile?.sha || null
+
+        if (remoteContextFile && !localContextFiles[fileName]) {
+            await writeRepoContextFile(localPath, fileName, remoteContextFile.content)
+        }
+    }
+
+    return remoteFileShas
 }
 
 export function createIpcHandlers({
@@ -243,6 +301,21 @@ export function createIpcHandlers({
                         ...(store.get('remoteFileShas') || {}),
                         'tasks.md': remoteFile?.sha || null
                     })
+                    const managedFileShas = await loadRemoteManagedFileShas({
+                        token,
+                        owner,
+                        repo,
+                        branch: getTasksBranch(activeRepo),
+                        getFile,
+                        writeRepoContextFile,
+                        localPath: activeRepo.localPath,
+                        localContextFiles
+                    })
+                    store.set('remoteFileShas', {
+                        ...(store.get('remoteFileShas') || {}),
+                        'tasks.md': remoteFile?.sha || null,
+                        ...managedFileShas
+                    })
                     setRepoDirty(
                         store,
                         activeRepo,
@@ -268,6 +341,21 @@ export function createIpcHandlers({
                     store.set('remoteFileShas', {
                         ...(store.get('remoteFileShas') || {}),
                         'tasks.md': remoteFile?.sha || null
+                    })
+                    const managedFileShas = await loadRemoteManagedFileShas({
+                        token,
+                        owner,
+                        repo,
+                        branch: getTasksBranch(activeRepo),
+                        getFile,
+                        writeRepoContextFile,
+                        localPath: activeRepo.localPath,
+                        localContextFiles
+                    })
+                    store.set('remoteFileShas', {
+                        ...(store.get('remoteFileShas') || {}),
+                        'tasks.md': remoteFile?.sha || null,
+                        ...managedFileShas
                     })
                     setRepoDirty(
                         store,
@@ -295,16 +383,19 @@ export function createIpcHandlers({
 
             store.set('tasksSha', file.sha)
             const remoteFileShas = { ...(store.get('remoteFileShas') || {}), 'tasks.md': file.sha }
-            for (const fileName of REMOTE_TASK_FILES) {
-                const remoteContextFile = await getFile(token, owner, repo, fileName, {
-                    ref: getTasksBranch(activeRepo)
+            Object.assign(
+                remoteFileShas,
+                await loadRemoteManagedFileShas({
+                    token,
+                    owner,
+                    repo,
+                    branch: getTasksBranch(activeRepo),
+                    getFile,
+                    writeRepoContextFile,
+                    localPath: activeRepo.localPath,
+                    localContextFiles
                 })
-                remoteFileShas[fileName] = remoteContextFile?.sha || null
-
-                if (remoteContextFile && !localContextFiles[fileName]) {
-                    await writeRepoContextFile(activeRepo.localPath, fileName, remoteContextFile.content)
-                }
-            }
+            )
             store.set('remoteFileShas', remoteFileShas)
             await writeLocalTasksMarkdown(owner, repo, file.content)
             await writeRepoTasksMarkdown(activeRepo.localPath, file.content)
@@ -382,16 +473,18 @@ export function createIpcHandlers({
             }
 
             store.set('tasksSha', file.sha)
-            for (const fileName of REMOTE_TASK_FILES) {
-                const remoteContextFile = await getFile(token, owner, repo, fileName, {
-                    ref: getTasksBranch(activeRepo)
+            Object.assign(
+                remoteFileShas,
+                await loadRemoteManagedFileShas({
+                    token,
+                    owner,
+                    repo,
+                    branch: getTasksBranch(activeRepo),
+                    getFile,
+                    writeRepoContextFile,
+                    localPath: activeRepo.localPath
                 })
-                remoteFileShas[fileName] = remoteContextFile?.sha || null
-
-                if (remoteContextFile) {
-                    await writeRepoContextFile(activeRepo.localPath, fileName, remoteContextFile.content)
-                }
-            }
+            )
             store.set('remoteFileShas', remoteFileShas)
 
             if (getRepoDirty(store, activeRepo)) {
@@ -441,6 +534,7 @@ export function createIpcHandlers({
                         owner,
                         repo,
                         branch: getTasksBranch(activeRepo),
+                        getFile,
                         updateFile,
                         readRepoContextFile,
                         localPath: activeRepo.localPath,

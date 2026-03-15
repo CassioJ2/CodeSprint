@@ -366,6 +366,7 @@ async function main() {
         assert.equal(refs[0], 'tasks')
         assert.equal(ensuredContexts[0].localPath, 'D:\\Projeto\\AI-Project')
         assert.equal(store.get('dirtyRepos')['cassio/ai-project'], true)
+        assert.equal(store.get('remoteFileShas')['playbook/README.md'], 'sha-remoto')
         assert.deepEqual(store.get('activeRepo'), {
             owner: 'cassio',
             repo: 'ai-project',
@@ -916,6 +917,72 @@ async function main() {
 
         assert.equal(result.sha, 'sha-remoto-final')
         assert.equal(remoteSnapshotCalls, 0)
+    })
+
+    await run('tasks:save reaproveita SHA remoto dos playbooks e faz retry quando necessario', async () => {
+        const { mainWindow } = createMainWindowRecorder()
+        const store = createMemoryStore({
+            token: 'token-123',
+            activeRepo: { owner: 'cassio', repo: 'ai-project', localPath: 'D:\\Projeto\\AI-Project' },
+            tasksSha: 'sha-tasks',
+            remoteFileShas: {}
+        })
+        const updateCalls = []
+
+        const handlers = createIpcHandlers({
+            env: { GITHUB_CLIENT_ID: 'client-id' },
+            mainWindow,
+            store,
+            startDeviceFlow: async () => ({}),
+            pollForToken: async () => 'token',
+            getRepos: async () => [],
+            getRepoCollaborators: async () => [],
+            getFile: async (_token, _owner, _repo, path) => {
+                if (path === 'tasks.md') {
+                    return { sha: 'sha-remoto-final', content: '# Tasks\n\n- [ ] Local\n' }
+                }
+
+                if (path === 'playbook/README.md') {
+                    return { sha: 'sha-playbook-remoto', content: 'README remoto' }
+                }
+
+                return null
+            },
+            updateFile: async (_token, _owner, _repo, path, content, sha) => {
+                updateCalls.push({ path, sha, content })
+
+                if (path === 'tasks.md') {
+                    return { sha: 'sha-tasks-atualizada' }
+                }
+
+                if (path === 'playbook/README.md' && !sha) {
+                    const error = new Error('sha conflict')
+                    error.status = 422
+                    throw error
+                }
+
+                return { sha: 'sha-playbook-atualizada' }
+            },
+            parse: () => [{ id: 'TASK-001', title: 'Local', status: 'pending', subtasks: [] }],
+            stringify: () => '# Tasks\n\n- [ ] Local\n',
+            readRepoContextFile: async (_localPath, fileName) => (
+                fileName === 'playbook/README.md' ? 'README local' : null
+            ),
+            writeLocalTasksMarkdown: async () => {},
+            writeRepoTasksMarkdown: async () => {},
+            startPoller: () => {},
+            stopPoller: () => {},
+            createInitialTasksMarkdown: () => '# Tasks\n'
+        })
+
+        const result = await handlers['tasks:save'](null, { tasks: [], commitMessage: 'test' })
+
+        assert.equal(result.success, true)
+        assert.equal(store.get('remoteFileShas')['playbook/README.md'], 'sha-playbook-atualizada')
+        assert.deepEqual(
+            updateCalls.filter((call) => call.path === 'playbook/README.md').map((call) => call.sha),
+            [null, 'sha-playbook-remoto']
+        )
     })
 
     await run('github:repo-collaborators usa o repo ativo da sessao', async () => {
