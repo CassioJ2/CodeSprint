@@ -19,50 +19,35 @@ import { useColumns } from "../context/ColumnsContext";
 import { useFlags } from "../context/FlagsContext";
 import ColumnsManager from "../components/ColumnsManager";
 
-function mergeTasksForReview(localTasks, remoteTasks) {
+function areTasksEqual(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function buildCloudReview(localTasks, remoteTasks) {
   const localById = new Map(localTasks.map((task) => [task.id, task]));
-  const remoteById = new Map(remoteTasks.map((task) => [task.id, task]));
-  const merged = [];
-
-  for (const localTask of localTasks) {
-    const remoteTask = remoteById.get(localTask.id);
-
-    if (!remoteTask) {
-      merged.push(localTask);
-      continue;
-    }
-
-    if (JSON.stringify(localTask) === JSON.stringify(remoteTask)) {
-      merged.push(localTask);
-      continue;
-    }
-
-    const localSubtasks = Array.isArray(localTask.subtasks) ? localTask.subtasks : [];
-    const remoteSubtasks = Array.isArray(remoteTask.subtasks) ? remoteTask.subtasks : [];
-    const localSubtasksById = new Map(localSubtasks.map((subtask) => [subtask.id, subtask]));
-    const mergedSubtasks = [...localSubtasks];
-
-    for (const remoteSubtask of remoteSubtasks) {
-      if (!localSubtasksById.has(remoteSubtask.id)) {
-        mergedSubtasks.push(remoteSubtask);
-      }
-    }
-
-    merged.push({
-      ...remoteTask,
-      ...localTask,
-      labels: Array.from(new Set([...(remoteTask.labels || []), ...(localTask.labels || [])])),
-      subtasks: mergedSubtasks,
-    });
-  }
+  const nextTasks = [...localTasks];
+  const autoAdded = [];
+  const conflicts = [];
 
   for (const remoteTask of remoteTasks) {
-    if (!localById.has(remoteTask.id)) {
-      merged.push(remoteTask);
+    const localTask = localById.get(remoteTask.id);
+
+    if (!localTask) {
+      autoAdded.push(remoteTask);
+      nextTasks.push(remoteTask);
+      continue;
+    }
+
+    if (!areTasksEqual(localTask, remoteTask)) {
+      conflicts.push({
+        taskId: remoteTask.id,
+        localTask,
+        cloudTask: remoteTask,
+      });
     }
   }
 
-  return merged;
+  return { nextTasks, autoAdded, conflicts };
 }
 
 export default function KanbanPage({
@@ -85,6 +70,7 @@ export default function KanbanPage({
   const [hasChanges, setHasChanges] = useState(initialHasChanges);
   const [collaborators, setCollaborators] = useState([]);
   const [incomingConflict, setIncomingConflict] = useState(null);
+  const [cloudReview, setCloudReview] = useState(null);
   const [activeView, setActiveView] = useState("board");
   const [backlogSearch, setBacklogSearch] = useState("");
   const [backlogPriority, setBacklogPriority] = useState("");
@@ -92,6 +78,7 @@ export default function KanbanPage({
   const [backlogLabel, setBacklogLabel] = useState("");
   const [backlogSort, setBacklogSort] = useState("priority");
   const tasksRef = useRef(initialTasks);
+  const hasChangesRef = useRef(initialHasChanges);
 
   const { columns } = useColumns();
   const { allFlags } = useFlags();
@@ -115,18 +102,52 @@ export default function KanbanPage({
 
   useEffect(() => {
     onDirtyChange?.(hasChanges);
+    hasChangesRef.current = hasChanges;
   }, [hasChanges, onDirtyChange]);
+
+  const applyCloudChanges = async (incomingTasks, source = "github") => {
+    const review = buildCloudReview(tasksRef.current, incomingTasks);
+    const baseDirty = hasChangesRef.current;
+
+    if (review.autoAdded.length > 0) {
+      setTasks(review.nextTasks);
+      await persistTasksLocally(review.nextTasks, baseDirty);
+    }
+
+    if (review.conflicts.length > 0) {
+      setCloudReview({
+        source,
+        baseDirty,
+        conflicts: review.conflicts,
+        autoAddedCount: review.autoAdded.length,
+        keptLocalCount: 0,
+      });
+      setToast({
+        message:
+          review.autoAdded.length > 0
+            ? `${review.autoAdded.length} cards novos vieram da nuvem. ${review.conflicts.length} cards precisam revisao.`
+            : `${review.conflicts.length} cards da nuvem precisam revisao antes de qualquer envio.`,
+        type: "warning",
+      });
+      return;
+    }
+
+    setCloudReview(null);
+    if (review.autoAdded.length > 0) {
+      setToast({
+        message: `${review.autoAdded.length} cards novos foram adicionados da nuvem.`,
+        type: "success",
+      });
+    }
+  };
 
   useEffect(() => {
     const cleanup = window.electron.on(
       "tasks:external-update",
       (updatedTasks) => {
-        setTasks(updatedTasks);
-        setHasChanges(false);
-        setIncomingConflict(null);
-        setToast({
-          message: "Tasks atualizadas pelo GitHub!",
-          type: "success",
+        applyCloudChanges(updatedTasks, "github").catch((err) => {
+          setError(err.message);
+          setStep("error");
         });
       },
     );
@@ -134,10 +155,9 @@ export default function KanbanPage({
     const cleanupConflict = window.electron.on(
       "tasks:remote-conflict",
       (incomingTasks) => {
-        setIncomingConflict({ tasks: incomingTasks, source: "github" });
-        setToast({
-          message: "Mudanca remota detectada. Escolha manter local ou carregar remoto.",
-          type: "warning",
+        applyCloudChanges(incomingTasks, "github").catch((err) => {
+          setError(err.message);
+          setStep("error");
         });
       },
     );
@@ -234,17 +254,21 @@ export default function KanbanPage({
     try {
       setStep("syncing");
       setError("");
+      if (cloudReview?.conflicts?.length) {
+        setStep("ready");
+        setToast({
+          message: "Revise primeiro as mudancas pendentes da nuvem antes de jogar para a nuvem.",
+          type: "warning",
+        });
+        return;
+      }
       const result = await window.electron.invoke("tasks:save", {
         tasks: tasksRef.current,
         commitMessage: "chore: update tasks",
       });
       if (result?.mode === "conflict") {
-        setIncomingConflict({ tasks: result.tasks || [], source: "github" });
+        await applyCloudChanges(result.tasks || [], "github");
         setStep("ready");
-        setToast({
-          message: "Mudancas remotas encontradas durante o sync. Revise antes de aplicar.",
-          type: "warning",
-        });
         return;
       }
       if (result?.tasks) {
@@ -253,7 +277,8 @@ export default function KanbanPage({
       setStep("ready");
       setHasChanges(false);
       setIncomingConflict(null);
-      setToast({ message: "Sincronizado com GitHub!", type: "success" });
+      setCloudReview(null);
+      setToast({ message: "Mudancas locais enviadas para a nuvem.", type: "success" });
     } catch (err) {
       setError(err.message);
       setStep("error");
@@ -267,23 +292,13 @@ export default function KanbanPage({
       const result = await window.electron.invoke("tasks:pull");
 
       if (result?.mode === "conflict") {
-        setIncomingConflict({ tasks: result.tasks || [], source: "github" });
+        await applyCloudChanges(result.tasks || [], "github");
         setStep("ready");
-        setToast({
-          message: "Mudancas remotas encontradas. Revise antes de aplicar.",
-          type: "warning",
-        });
         return;
       }
 
-      setTasks(result?.tasks || []);
-      setHasChanges(false);
-      setIncomingConflict(null);
       setStep("ready");
-      setToast({
-        message: "Versao remota puxada com sucesso.",
-        type: "success",
-      });
+      await applyCloudChanges(result?.tasks || [], "github");
     } catch (err) {
       setError(err.message);
       setStep("error");
@@ -471,6 +486,62 @@ export default function KanbanPage({
     }
   };
 
+  const handleUseCloudVersion = async (taskId) => {
+    if (!cloudReview) return;
+
+    const conflict = cloudReview.conflicts.find((item) => item.taskId === taskId);
+    if (!conflict) return;
+
+    const nextTasks = tasksRef.current.map((task) =>
+      task.id === taskId ? conflict.cloudTask : task,
+    );
+    const remaining = cloudReview.conflicts.filter((item) => item.taskId !== taskId);
+    const nextDirty = cloudReview.baseDirty || cloudReview.keptLocalCount > 0;
+
+    setTasks(nextTasks);
+    await persistTasksLocally(nextTasks, nextDirty);
+    setHasChanges(nextDirty);
+
+    if (remaining.length === 0) {
+      setCloudReview(null);
+      setToast({
+        message: "Mudancas da nuvem revisadas.",
+        type: "success",
+      });
+      return;
+    }
+
+    setCloudReview({
+      ...cloudReview,
+      conflicts: remaining,
+    });
+  };
+
+  const handleKeepLocalVersion = async (taskId) => {
+    if (!cloudReview) return;
+
+    const remaining = cloudReview.conflicts.filter((item) => item.taskId !== taskId);
+    const keptLocalCount = cloudReview.keptLocalCount + 1;
+
+    await persistTasksLocally(tasksRef.current, true);
+    setHasChanges(true);
+
+    if (remaining.length === 0) {
+      setCloudReview(null);
+      setToast({
+        message: "Mudancas da nuvem revisadas. O que voce manteve local ficara pronto para envio.",
+        type: "success",
+      });
+      return;
+    }
+
+    setCloudReview({
+      ...cloudReview,
+      conflicts: remaining,
+      keptLocalCount,
+    });
+  };
+
   const incomingSummary = useMemo(() => {
     if (!incomingConflict) {
       return null;
@@ -502,6 +573,15 @@ export default function KanbanPage({
 
     return { added, changed, localOnly };
   }, [incomingConflict, tasks]);
+  const cloudReviewSummary = useMemo(() => {
+    if (!cloudReview) return null;
+
+    return {
+      conflicts: cloudReview.conflicts.length,
+      autoAddedCount: cloudReview.autoAddedCount,
+      keptLocalCount: cloudReview.keptLocalCount,
+    };
+  }, [cloudReview]);
 
   const tasksByStatus = (status) => tasks.filter((t) => t.status === status);
   const backlogTasks = tasks.filter((task) => task.status === "backlog");
@@ -607,7 +687,7 @@ export default function KanbanPage({
             Abrir tasks.md
           </button>
           <button className={styles.btnFlags} onClick={handlePullRemote}>
-            Puxar remoto
+            Puxar da nuvem
           </button>
           <button className={styles.btnFlags} onClick={onChangeRepo}>
             Trocar repo
@@ -627,16 +707,16 @@ export default function KanbanPage({
           <button
             className={`${styles.btnSync} ${hasChanges ? styles.btnSyncPending : ""}`}
             onClick={handleSync}
-            disabled={step === "syncing" || !hasChanges}
+            disabled={step === "syncing" || !hasChanges || !!cloudReview?.conflicts?.length}
           >
             {step === "syncing" ? (
               <>
-                <LoadingSpinner size="sm" /> Sincronizando...
+                <LoadingSpinner size="sm" /> Enviando...
               </>
             ) : hasChanges ? (
-              "Sync"
+              "Jogar para nuvem"
             ) : (
-              "Sincronizado"
+              "Nuvem em dia"
             )}
           </button>
           <button className={styles.btnLogout} onClick={handleLogout}>
@@ -644,6 +724,72 @@ export default function KanbanPage({
           </button>
         </div>
       </header>
+
+      {cloudReview && (
+        <div className={styles.conflictBar}>
+          <div className={styles.conflictText}>
+            Mudancas da nuvem chegaram sem apagar nada local.
+            {cloudReviewSummary && (
+              <span className={styles.conflictSummary}>
+                {cloudReviewSummary.autoAddedCount} cards novos adicionados automaticamente. {cloudReviewSummary.conflicts} cards precisam revisao.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {cloudReview?.conflicts?.length > 0 && (
+        <section className={styles.reviewPanel}>
+          <div className={styles.reviewHeader}>
+            <h3 className={styles.reviewTitle}>Revisar mudancas da nuvem</h3>
+            <p className={styles.reviewText}>
+              Cards novos ja entraram automaticamente. Aqui voce escolhe, card por card, se fica com a versao local ou com a versao da nuvem.
+            </p>
+          </div>
+          <div className={styles.reviewList}>
+            {cloudReview.conflicts.map((item) => (
+              <div key={item.taskId} className={styles.reviewItem}>
+                <div className={styles.reviewColumns}>
+                  <div className={styles.reviewCard}>
+                    <span className={styles.reviewBadge}>Local</span>
+                    <p className={styles.reviewCardTitle}>{item.localTask.title}</p>
+                    {item.localTask.description && (
+                      <p className={styles.reviewCardText}>{item.localTask.description}</p>
+                    )}
+                    <p className={styles.reviewCardMeta}>
+                      Status: {item.localTask.status} • Prioridade: {item.localTask.priority || "sem prioridade"} • Assignee: {item.localTask.assignee || "sem responsavel"}
+                    </p>
+                  </div>
+                  <div className={styles.reviewCard}>
+                    <span className={styles.reviewBadge}>Nuvem</span>
+                    <p className={styles.reviewCardTitle}>{item.cloudTask.title}</p>
+                    {item.cloudTask.description && (
+                      <p className={styles.reviewCardText}>{item.cloudTask.description}</p>
+                    )}
+                    <p className={styles.reviewCardMeta}>
+                      Status: {item.cloudTask.status} • Prioridade: {item.cloudTask.priority || "sem prioridade"} • Assignee: {item.cloudTask.assignee || "sem responsavel"}
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.reviewActions}>
+                  <button
+                    className={styles.btnFlags}
+                    onClick={() => handleKeepLocalVersion(item.taskId)}
+                  >
+                    Ficar com local
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={() => handleUseCloudVersion(item.taskId)}
+                  >
+                    Usar nuvem
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {incomingConflict && (
         <div className={styles.conflictBar}>
@@ -659,10 +805,7 @@ export default function KanbanPage({
           </div>
           <div className={styles.conflictActions}>
             <button className={styles.btnFlags} onClick={handleKeepLocal}>
-              Manter local
-            </button>
-            <button className={styles.btnFlags} onClick={handleMergeIncoming}>
-              Mesclar
+              Manter no app
             </button>
             <button className={styles.btnPrimary} onClick={handleLoadRemote}>
               {incomingConflict.source === "local"
